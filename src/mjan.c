@@ -166,22 +166,22 @@ void PrintPosition(POSITION position, STRING playerName, BOOLEAN usersTurn) {
     generic_hash_unhash(position, board);
     // int player = generic_hash_turn(position);
     char* prediction = GetPrediction(position, playerName, usersTurn);
-    printf("\n         (  0  1  2  3 )           : %c %c %c %c\n",
+    printf("\n         (  1  2  3  4 )           : %c %c %c %c\n",
 	       board[0],
 	       board[1],
 	       board[2],
 	       board[3]);
-	printf("         (  4  5  6  7 )           : %c %c %c %c\n",
+	  printf("         (  5  6  7  8 )           : %c %c %c %c\n",
 	       board[4],
 	       board[5],
 	       board[6],
 	       board[7]);
-	printf("LEGEND:  (  8  9 10 11 )   TOTAL:  : %c %c %c %c\n",
+	  printf("LEGEND:  (  9 10 11 12 )   TOTAL:  : %c %c %c %c\n",
 	       board[8],
 	       board[9],
 	       board[10],
 	       board[11]);
-	printf("         ( 12 13 14 15 )           : %c %c %c %c %s\n\n",
+	  printf("         ( 13 14 15 16 )           : %c %c %c %c %s\n\n",
 	       board[12],
 	       board[13],
 	       board[14],
@@ -211,7 +211,7 @@ BOOLEAN ValidTextInput(STRING input) {
         return FALSE;  
     }
 
-    if (start_pos < 0 || start_pos > 15 || end_pos < 0 || end_pos > 15) {
+    if (start_pos <= 0 || start_pos > 16 || end_pos <= 0 || end_pos > 16) {
         return FALSE;
     }
 
@@ -230,14 +230,14 @@ MOVE ConvertTextInputToMove(STRING input) {
     
     sscanf(input, "%d %d", &start_pos, &end_pos);
     
-    MOVE encoded_move = ((start_pos & 0x0F) << 4) | (end_pos & 0x0F);
+    MOVE encoded_move = (((start_pos - 1) & 0x0F) << 4) | ((end_pos - 1) & 0x0F);
     
     return encoded_move;
 }
 
 void MoveToString(MOVE move, char *moveStringBuffer) {
-    int start_pos = (move >> 4) & 0x0F; 
-    int end_pos = move & 0x0F;          
+    int start_pos = ((move >> 4) & 0x0F) + 1; 
+    int end_pos = (move & 0x0F) + 1;          
     
     snprintf(moveStringBuffer, MAX_MOVE_STRING_LENGTH, "%d %d", start_pos, end_pos);
 
