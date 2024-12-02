@@ -25,7 +25,7 @@ POSITION gNumberOfPositions = 0;
 // game metadata
 BOOLEAN kDebugDetermineValue = FALSE;
 BOOLEAN kDebugMenu           = FALSE;
-BOOLEAN kGameSpecificMenu    = FALSE;
+BOOLEAN kGameSpecificMenu    = TRUE;
 BOOLEAN kLoopy               = TRUE;
 BOOLEAN kPartizan            = FALSE;
 BOOLEAN kSupportsSymmetries  = TRUE;
@@ -57,6 +57,10 @@ void SetTclCGameSpecificOptions(int theOptions[]) { (void)theOptions; }
 #define DECODEMOVEIDX(move) ((move >> 4) & 0x0F)
 #define DECODEMOVEJDX(move) (move & 0x0F)
 #define NEXTPLAYER(player) (player == 1 ? 2 : 1)
+
+/* Variants */
+BOOLEAN gAllDiag = FALSE;
+BOOLEAN gMainDiag = FALSE;
 
 // intializes neccessary game variables.
 // 
@@ -116,16 +120,46 @@ MOVELIST *GenerateMoves(POSITION position) {
   generic_hash_unhash(position, board);
 
   char piece = (generic_hash_turn(position) == 1) ? WCHAR : BCHAR;
-  int diffs[4] = {4, -4, 1, -1}; // up down right left
+  int diffs[8] = {4, -4, 1, -1, 5, -5, 3, -3};
 
-  for (int idx = 0; idx < 16; idx ++) {
+  // Main diagonal positions
+  BOOLEAN isMainDiagonalPos[16] = {
+    TRUE, FALSE, FALSE, TRUE,   // 1, 4
+    FALSE, TRUE, TRUE, FALSE,   // 6, 7
+    FALSE, TRUE, TRUE, FALSE,   // 10, 11
+    TRUE, FALSE, FALSE, TRUE    // 13, 16
+  };
+
+  for (int idx = 0; idx < 16; idx++) {
     if (board[idx] != piece)
       continue;
 
-    for (int cnt = 0; cnt < 4; cnt ++) {
-      int jdx = idx + diffs[cnt];
-      if (jdx >= 0 && jdx < BOARDSIZE && board[jdx] == ECHAR && ((diffs[cnt] == -4 || diffs[cnt] == 4) || jdx / 4 == idx / 4))
-        moves = CreateMovelistNode(ENCODEMOVE(idx, diffs[cnt]), moves);
+    for (int cnt = 0; cnt < 8; cnt++) {
+      int diff = diffs[cnt];
+      int jdx = idx + diff;
+
+      // Check
+      if (jdx < 0 || jdx >= BOARDSIZE)
+        continue;
+
+      // Check if move stays within the same row for horizontal moves
+      if ((diff == 1 || diff == -1) && jdx / 4 != idx / 4)
+        continue;
+
+      // Check diagonal rules
+      if ((diff == 5 || diff == -5 || diff == 3 || diff == -3) && abs(idx % 4 - jdx % 4) > 1) {
+        if (gMainDiag && (!isMainDiagonalPos[idx] || !isMainDiagonalPos[jdx]))
+          continue;
+
+        // If neither mainDiag nor allDiag is true, skip this move
+        if (!gMainDiag && !gAllDiag)
+          continue;
+      }
+
+      // Check if target square is empty
+      if (board[jdx] == ECHAR) {
+        moves = CreateMovelistNode(ENCODEMOVE(idx, diff), moves);
+      }
     }
   }
 
@@ -253,17 +287,13 @@ USERINPUT GetAndPrintPlayersMove(POSITION position, MOVE *move, STRING playerNam
 
 // checks if an input is in a valid format to be considered a move.
 BOOLEAN ValidTextInput(STRING input) {
-  int idx, jdx, diff;
+  int idx, jdx;
   char ext;
   
   if (sscanf(input, "%d %d %c", &idx, &jdx, &ext) != 2)
     return FALSE;
 
   if (idx <= 0 || idx > BOARDSIZE || jdx <= 0 || jdx > BOARDSIZE)
-    return FALSE;
-
-  diff = jdx - idx;
-  if (diff != 4 && diff != -4 && diff != 1 && diff != -1)
     return FALSE;
 
   return TRUE;
@@ -300,18 +330,85 @@ void DebugMenu(void) {}
 /*********** BEGIN VARIANT FUNCTIONS ***********/
 
 // as of this version, only standard exists
-int NumberOfOptions(void) {
-    return 1;
+int NumberOfOptions() {
+	return 2*3;
 }
-int getOption(void) {
-  return 0;
+
+int getOption() {
+	int option = 1;
+	if(gAllDiag) option += 1;
+	if(gMainDiag) option += 2;
+
+	return option;
 }
+
+STRING GetVarString() {
+	switch (getOption())
+	{
+	case 1:
+		return "Standard (no diagonal moves)";
+		break;
+	case 2:
+		return "All diagonal moves";
+		break;
+	case 3:
+		return "Main diagonal moves";
+		break;
+	default:
+		BadElse("GetVarString");
+		break;
+	}
+	return "String not set for this option";
+}
+
+
 void setOption(int option) {
-  (void) option;
+	option -= 1;
+	gStandardGame = option%2==1;
+	gAllDiag = option/2%3==1;
+	gMainDiag = option/2%3==2;
 }
 
 // kGameSpecificMenu = FALSE -> no purpose
-void GameSpecificMenu(void) {}
+void GameSpecificMenu() {
+  char GetMyChar();
+  printf("\n");
+	printf("Jan 4x4 Game Specific Menu\n\n");
+	printf("1) No diagonal moves (default)\n");
+	printf("2) All possible diagonal moves\n");
+	printf("3) Main diagonal moves only\n");
+	printf("b) Back to previous menu\n\n");
+
+  printf("Current option:   %s\n",GetVarString());
+	printf("Select an option: ");
+
+  switch(GetMyChar()) {
+	case 'Q': case 'q':
+		ExitStageRight();
+		break;
+	case '1':
+		gMainDiag = FALSE;
+		gAllDiag = FALSE;
+		break;
+	case '2':
+		gMainDiag = FALSE;
+		gAllDiag = TRUE;
+		break;
+	case '3':
+		gMainDiag = TRUE;
+		gAllDiag = FALSE;
+		break;
+
+
+	case 'b': case 'B':
+		return;
+	default:
+		printf("\nSorry, I don't know that option. Try another.\n");
+		HitAnyKeyToContinue();
+		GameSpecificMenu();
+		break;
+	}
+}
 
 /*********** END VARIANT-RELATED FUNCTIONS ***********/
 /***********    BEGIN AUTOGUI FUNCTIONS    ***********/
