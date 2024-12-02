@@ -59,8 +59,8 @@ void SetTclCGameSpecificOptions(int theOptions[]) { (void)theOptions; }
 #define NEXTPLAYER(player) (player == 1 ? 2 : 1)
 
 /* Variants */
-BOOLEAN allDiag = FALSE;
-BOOLEAN mainDiag = FALSE;
+BOOLEAN gAllDiag = FALSE;
+BOOLEAN gMainDiag = FALSE;
 
 // intializes neccessary game variables.
 // 
@@ -138,24 +138,25 @@ MOVELIST *GenerateMoves(POSITION position) {
       int diff = diffs[cnt];
       int jdx = idx + diff;
 
+      // Check
       if (jdx < 0 || jdx >= BOARDSIZE)
         continue;
 
+      // Check if move stays within the same row for horizontal moves
       if ((diff == 1 || diff == -1) && jdx / 4 != idx / 4)
         continue;
 
-      if ((diff == 5 || diff == -5 || diff == 3 || diff == -3) &&
-          abs(idx % 4 - jdx % 4) > 1)
-        continue;
-
-      if ((diff == 5 || diff == -5 || diff == 3 || diff == -3)) {
-        if (mainDiag && (!isMainDiagonalPos[idx] || !isMainDiagonalPos[jdx]))
+      // Check diagonal rules
+      if ((diff == 5 || diff == -5 || diff == 3 || diff == -3) && abs(idx % 4 - jdx % 4) > 1) {
+        if (gMainDiag && (!isMainDiagonalPos[idx] || !isMainDiagonalPos[jdx]))
           continue;
 
-        if (!mainDiag && !allDiag)
+        // If neither mainDiag nor allDiag is true, skip this move
+        if (!gMainDiag && !gAllDiag)
           continue;
       }
 
+      // Check if target square is empty
       if (board[jdx] == ECHAR) {
         moves = CreateMovelistNode(ENCODEMOVE(idx, diff), moves);
       }
@@ -335,9 +336,8 @@ int NumberOfOptions() {
 
 int getOption() {
 	int option = 1;
-	if(gStandardGame) option += 1;
-	if(allDiag) option += 1 *2;
-	if(mainDiag) option += 2 *2;
+	if(gAllDiag) option += 1;
+	if(gMainDiag) option += 2;
 
 	return option;
 }
@@ -346,22 +346,13 @@ STRING GetVarString() {
 	switch (getOption())
 	{
 	case 1:
-		return "Mis�re game with standard moves";
+		return "Standard (no diagonal moves)";
 		break;
 	case 2:
-		return "Standard game with standard moves";
+		return "All diagonal moves";
 		break;
 	case 3:
-		return "Mis�re game with all possible diagonal moves";
-		break;
-	case 4:
-		return "Standard game with all possible diagonal moves";
-		break;
-	case 5:
-		return "Mis�re game with main diagonal moves only";
-		break;
-	case 6:
-		return "Standard game with main diagonal moves only ";
+		return "Main diagonal moves";
 		break;
 	default:
 		BadElse("GetVarString");
@@ -374,8 +365,8 @@ STRING GetVarString() {
 void setOption(int option) {
 	option -= 1;
 	gStandardGame = option%2==1;
-	allDiag = option/2%3==1;
-	mainDiag = option/2%3==2;
+	gAllDiag = option/2%3==1;
+	gMainDiag = option/2%3==2;
 }
 
 // kGameSpecificMenu = FALSE -> no purpose
@@ -385,10 +376,10 @@ void GameSpecificMenu() {
 	printf("Jan 4x4 Game Specific Menu\n\n");
 	printf("1) No diagonal moves (default)\n");
 	printf("2) All possible diagonal moves\n");
-	printf("3) Main diagonal moves only (default)\n");
+	printf("3) Main diagonal moves only\n");
 	printf("b) Back to previous menu\n\n");
 
-  printf("Current option:   %s\n", allDiag ? "All diagonal moves" : mainDiag ? "Main diagonal moves" : "Standard (no diagonal moves)");
+  printf("Current option:   %s\n",GetVarString());
 	printf("Select an option: ");
 
   switch(GetMyChar()) {
@@ -396,16 +387,16 @@ void GameSpecificMenu() {
 		ExitStageRight();
 		break;
 	case '1':
-		mainDiag = FALSE;
-		allDiag = FALSE;
+		gMainDiag = FALSE;
+		gAllDiag = FALSE;
 		break;
 	case '2':
-		mainDiag = FALSE;
-		allDiag = TRUE;
+		gMainDiag = FALSE;
+		gAllDiag = TRUE;
 		break;
 	case '3':
-		mainDiag = TRUE;
-		allDiag = FALSE;
+		gMainDiag = TRUE;
+		gAllDiag = FALSE;
 		break;
 
 
